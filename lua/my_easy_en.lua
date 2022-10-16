@@ -79,6 +79,63 @@ end
 
 -- handler: 处理 * 号
 local GessHandler = EasyHandler:extend()
+function GessHandler:get_pattern()
+  local pattern = self.pattern
+  if(not pattern) then
+    local split = self:get_split()
+    pattern = split[1]
+    self.pattern = pattern
+    self.split = split
+  end
+  return pattern
+end
+function GessHandler:get_split_raw()
+  local split_raw = self.split_raw
+  if(not split_raw) then
+    local input_waiting = self.input_waiting
+    split_raw = string_helper.split(input_waiting, "*")
+    self.split_raw = split_raw
+  end
+  return split_raw
+end
+function GessHandler:get_split()
+  local split = self.split
+  if(not split) then
+    local input_waiting = self.input_waiting
+    split = string_helper.split(string.lower(input_waiting), "*")
+    self.split = split
+  end
+  return split
+end
+function GessHandler:get_yield_pattern()
+  local yield_pattern = self.yield_pattern
+  if(not yield_pattern) then
+    local split = self:get_split()
+    yield_pattern = "^"..string_helper.join(split, ".*").."$"
+    self.yield_pattern = yield_pattern
+  end
+  return yield_pattern
+end
+function GessHandler:is_yield(entry)
+  local pattern = self:get_yield_pattern()
+  local text = entry.text
+  local flag = string.match(text, pattern)~=nil
+  return flag
+end
+function GessHandler:get_candidate_text(entry)
+  local text = entry.text
+  local split = self:get_split()
+  local split_raw = self:get_split_raw()
+  local index = 1
+  for i=1,#split do
+    local part = split[i]
+    local part_raw = split_raw[i]
+    local s,e = string.find(text, part, index, true)
+    text = string.sub(text,1,s-1)..part_raw..string.sub(text, e+1, #text)
+    index = s+#part_raw
+  end
+  return text
+end
 
 function translator.func(input, seg, env)
   if(env.init_ok~=true) then logger.warn("Fail to init \""..env.name_space.."\" component!", env); return end
